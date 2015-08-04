@@ -53,9 +53,13 @@ Importing results
 -----------------
 To import the results as a Python dictionary use the _jsonLoad_ function:
 
+    from tScrape import jsonLoad
     results = jsonLoad(handle, path)
 
 Use the standard dictionary methods to inspect the content:
 
     results.keys()
     results.values()
+
+    for key en results.keys():
+        print key, results[key]
