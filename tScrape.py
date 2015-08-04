@@ -85,7 +85,10 @@ def scraper(handles, dataPath, stopTime, verbose=True):
             sleep(2)
             scrollBottom(driver)
             scroll = dateCheck(driver, stopTime)
-        vprint('Saving', verbose)
+        if s > 0:
+            vprint('\nSaving', verbose)
+        else:
+            vprint('Saving', verbose)
         with open(dataPath + handle + '.html', 'wb') as f:
             f.write(driver.page_source.encode('UTF-8'))
         vprint('------', verbose)
