@@ -96,6 +96,8 @@ def parser(handles, dataPath, parsePath, stopTime, verbose=True):
     Parse data from scraper and output to json files.
     """
     vprint('# Parsing', verbose)
+    if not os.path.exists(parsePath):
+        os.makedirs(parsePath)
     wordCount = Counter()
     for handle in handles:
         tweetDict = {}
