@@ -15,5 +15,5 @@ verbose = True
 dataPath = './data/raw/'
 parsePath = './data/'
 
-#scraper(handles, dataPath, stopTime, verbose)
+scraper(handles, dataPath, stopTime, verbose)
 parser(handles, dataPath, parsePath, stopTime, verbose)
