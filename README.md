@@ -47,3 +47,15 @@ For each Twitter handle the parser will output two json files:
 - favorites: number of received favorites
 - time: time of tweet
 - mentions: list of @ mentions
+
+
+Importing results
+-----------------
+To import the results as a Python dictionary use the _jsonLoad_ function:
+
+    results = jsonLoad(handle, path)
+
+Use the standard dictionary methods to inspect the content:
+
+    results.keys()
+    results.values()

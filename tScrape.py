@@ -25,11 +25,11 @@ def sleep(s):
     time.sleep(random() + s)
 
 
-def jsonLoad(handle):
+def jsonLoad(handle, path):
     """
     Load a specific json file.
     """
-    return json.load(open('./settings/' + handle + '.json'))
+    return json.load(open(path + handle + '.json'))
 
 
 def dateCheck(driver, stopTime):
