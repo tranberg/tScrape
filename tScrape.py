@@ -9,7 +9,6 @@ from random import random
 from datetime import datetime
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from collections import Counter
 
 
 def vprint(str, verbose=True):
@@ -33,7 +32,7 @@ def jsonLoad(handle, path):
     return json.load(open(path + handle + '.json'))
 
 
-def dateCheck(driver, stopTime):
+def dateCheck(driver, stopTime, lastTweet=None):
     """
     Check if tweets are older than given stop time.
     """
@@ -41,10 +40,12 @@ def dateCheck(driver, stopTime):
     spans = soup.findAll('span')
     for span in spans[::-1]:
         if span.has_attr('data-time'):
-            if int(span['data-time']) <= stopTime:
-                return False
+            if span['data-time'] == lastTweet:
+                return False, span['data-time']
+            elif int(span['data-time']) <= stopTime:
+                return False, span['data-time']
             else:
-                return True
+                return True, span['data-time']
 
 
 def scrollBottom(driver):
@@ -59,6 +60,33 @@ def timeString(timeStamp):
     Convert unix time to eg. 2015-06-18 14:57:44.
     """
     return datetime.fromtimestamp(int(timeStamp)).strftime('%Y-%m-%d %H:%M:%S')
+
+
+def getTweetData(tweet):
+    """
+    Extract data from a tweet, which is a BeautifulSoup object.
+    """
+    timeStamp = tweet.find('small').find('a').find('span')['data-time']
+    # Determine if original tweet or retweet
+    try:
+        contextClasses = tweet.find('div').find('div').find('span')['class']
+        if 'Icon--retweeted' in contextClasses:
+            origin = 'RT'
+    except:
+        origin = 'T'
+    text = tweet.find('p').getText()
+    hashtags = []
+    mentions = []
+    anchors = tweet.findAll('a')
+    for a in anchors:
+        anchorClasses = a['class']
+        if 'twitter-hashtag' in anchorClasses:
+            hashtags.append(a.getText())
+        if 'twitter-atreply' in anchorClasses:
+            mentions.append(a.getText())
+    # Convert unix time stamp to human readable date format
+    timeStamp = timeString(timeStamp)
+    return timeStamp, origin, text, hashtags, mentions
 
 
 def scraper(handles, dataPath, stopTime, verbose=True):
@@ -76,7 +104,7 @@ def scraper(handles, dataPath, stopTime, verbose=True):
         s = 0
         driver.get('http://twitter.com/' + handle)
         vprint('Got ' + handle, verbose)
-        scroll = dateCheck(driver, stopTime)
+        scroll, lastTweet = dateCheck(driver, stopTime)
         while scroll is True:
             s += 1
             if verbose:
@@ -84,7 +112,7 @@ def scraper(handles, dataPath, stopTime, verbose=True):
                 sys.stdout.write('\r' + 'Scrolling (' + str(s) + ')')
             sleep(2)
             scrollBottom(driver)
-            scroll = dateCheck(driver, stopTime)
+            scroll, lastTweet = dateCheck(driver, stopTime, lastTweet)
         if s > 0:
             vprint('\nSaving', verbose)
         else:
@@ -102,7 +130,6 @@ def parser(handles, dataPath, parsePath, stopTime, verbose=True):
     vprint('# Parsing', verbose)
     if not os.path.exists(parsePath):
         os.makedirs(parsePath)
-    wordCount = Counter()
     for handle in handles:
         tweetDict = {}
         try:
@@ -110,6 +137,11 @@ def parser(handles, dataPath, parsePath, stopTime, verbose=True):
             vprint('Got ' + handle, verbose)
         except:
             raise Exception('Run scraper before parser!')
+        try:
+            tweetDict = jsonLoad(handle + '-tweets', parsePath)
+            firstRun = False
+        except:
+            firstRun = True
 
         # Gather page stats
         anchors = soup.findAll('a')
@@ -144,6 +176,7 @@ def parser(handles, dataPath, parsePath, stopTime, verbose=True):
         # Find tweets
         feed = soup.find_all('li')
         tweets = []
+        new = 0
         for tag in feed:
             if tag.has_attr('data-item-type'):
                 if tag['data-item-type'] == 'tweet':
@@ -155,33 +188,11 @@ def parser(handles, dataPath, parsePath, stopTime, verbose=True):
             if verbose:
                 sys.stdout.write('\r' + str(t + 1) + ' / ' + str(nTweets))
                 sys.stdout.flush()
-            hashtags = []
-            mentions = []
 
             # Unique tweet identifier
             ID = tweet['data-item-id']
-            # Unix time stamp for tweet
-            timeStamp = tweet.find('small').find('a').find('span')['data-time']
-            # Determine if original tweet or re-tweet
-            try:
-                contextClasses = tweet.find('div').find('div').find('span')['class']
-                if 'Icon--retweeted' in contextClasses:
-                    origin = 'RT'
-            except:
-                origin = 'T'
-            # Extract tweet text
-            text = tweet.find('p').getText()
-            wordCount.update(word.strip('@#.,?!"\'').lower() for word in text.split())
-            # Find hashtags and @ mentions
-            anchors = tweet.findAll('a')
-            for a in anchors:
-                anchorClasses = a['class']
-                if 'twitter-hashtag' in anchorClasses:
-                    hashtags.append(a.getText())
-                if 'twitter-atreply' in anchorClasses:
-                    mentions.append(a.getText())
 
-            # Find number of re-tweets and favorites
+            # Find number of retweets and favorites
             buttons = tweet.findAll('button')
             for button in buttons:
                 buttonClasses = button['class']
@@ -190,17 +201,30 @@ def parser(handles, dataPath, parsePath, stopTime, verbose=True):
                 if 'js-actionFavorite' in buttonClasses:
                     favorites = button.findAll('span')[-1].getText()
 
-            # Convert unix time stamp to date format
-            timeStamp = timeString(timeStamp)
-
-            # Wrap data in dictionary
-            tweetDict[ID] = {'time': timeStamp,
-                             'origin': origin,
-                             'text': text,
-                             'hashtags': hashtags,
-                             'mentions': mentions,
-                             'retweets': retweets,
-                             'favorites': favorites}
+            if firstRun is True:
+                new += 1
+                timeStamp, origin, text, hashtags, mentions = getTweetData(tweet)
+                tweetDict[ID] = {'time': timeStamp,
+                                 'origin': origin,
+                                 'text': text,
+                                 'hashtags': hashtags,
+                                 'mentions': mentions,
+                                 'retweets': retweets,
+                                 'favorites': favorites}
+            else:
+                if ID in tweetDict.keys():
+                    tweetDict[ID]['retweets'] = retweets
+                    tweetDict[ID]['favorites'] = favorites
+                else:
+                    new += 1
+                    timeStamp, origin, text, hashtags, mentions = getTweetData(tweet)
+                    tweetDict[ID] = {'time': timeStamp,
+                                     'origin': origin,
+                                     'text': text,
+                                     'hashtags': hashtags,
+                                     'mentions': mentions,
+                                     'retweets': retweets,
+                                     'favorites': favorites}
 
         # Calculate stats
         nDays = round((round(time.time()) - stopTime) / (60 * 60 * 24))
@@ -223,7 +247,9 @@ def parser(handles, dataPath, parsePath, stopTime, verbose=True):
         statsDict['favorites'] = '%.3f' % (favorites / nTweets)
 
         # Save data
-        vprint('\nSaving', verbose)
+        if new > 0:
+            vprint(', ' + str(new) + ' new.')
+        vprint('Saving', verbose)
         with open(parsePath + handle + '-tweets.json', 'w') as jsonFile:
             json.dump(tweetDict, jsonFile)
         with open(parsePath + handle + '-stats.json', 'w') as jsonFile:
