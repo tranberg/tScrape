@@ -72,6 +72,7 @@ def getTweetData(tweet):
         contextClasses = tweet.find('div').find('div').find('span')['class']
         if 'Icon--retweeted' in contextClasses:
             origin = 'RT'
+        else: origin = 'T'
     except:
         origin = 'T'
     text = tweet.find('p').getText()
@@ -249,6 +250,8 @@ def parser(handles, dataPath, parsePath, stopTime, verbose=True):
         # Save data
         if new > 0:
             vprint(', ' + str(new) + ' new.')
+        else:
+            vprint('')
         vprint('Saving', verbose)
         with open(parsePath + handle + '-tweets.json', 'w') as jsonFile:
             json.dump(tweetDict, jsonFile)
