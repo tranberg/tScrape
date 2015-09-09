@@ -11,7 +11,7 @@ Configure scraper
 -----------------
 In *run.py*:
 
-1. Define a list of Twitter handles (pages, not persons)
+1. Define a list of Twitter handles
 2. Set a date for the scraper to go back in time
 3. Define verbosity and output paths
 

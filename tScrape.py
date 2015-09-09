@@ -20,7 +20,8 @@ def vprint(str, verbose=True):
 
 def sleep(s):
     """
-    A sleep function with random noise so we seem more human.
+    A sleep function to allow for asynchronous loading of tweets with random
+    noise so we seem more human.
     """
     time.sleep(random() + s)
 
@@ -94,7 +95,7 @@ def scraper(handles, dataPath, stopTime, verbose=True):
     """
     Scrape twitter page from now and back in time to stopTime.
     """
-    vprint('# Starting scraper')
+    vprint('# Starting scraper', verbose)
     driver = webdriver.Firefox()
     driver.set_window_size(1920, 1080)
 
@@ -104,8 +105,12 @@ def scraper(handles, dataPath, stopTime, verbose=True):
     for handle in handles:
         s = 0
         driver.get('http://twitter.com/' + handle)
-        vprint('Got ' + handle, verbose)
-        scroll, lastTweet = dateCheck(driver, stopTime)
+        try:
+            scroll, lastTweet = dateCheck(driver, stopTime)
+            vprint('Got ' + handle, verbose)
+        except:
+            print('Error: ' + handle + ' does not exist!\n------')
+            continue
         while scroll is True:
             s += 1
             if verbose:
@@ -137,7 +142,8 @@ def parser(handles, dataPath, parsePath, stopTime, verbose=True):
             soup = BeautifulSoup(open(dataPath + handle + '.html'))
             vprint('Got ' + handle, verbose)
         except:
-            raise Exception('Run scraper before parser!')
+            print(handle + ': Data not found. Remember to run scraper before parser!')
+            continue
         try:
             tweetDict = jsonLoad(handle + '-tweets', parsePath)
             firstRun = False
