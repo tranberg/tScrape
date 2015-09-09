@@ -1,5 +1,5 @@
 # tScrape
-A simple simple Python scraper and parser for Twitter pages using [Beautifulsoup 4](http://www.crummy.com/software/BeautifulSoup/bs4/doc/) and [Selenium](http://selenium-python.readthedocs.org/) webdriver.
+A simple Python scraper and parser for Twitter pages using [Beautifulsoup 4](http://www.crummy.com/software/BeautifulSoup/bs4/doc/) and [Selenium](http://selenium-python.readthedocs.org/) webdriver. Parser output is json, see details below.
 
 
 Install requirements
